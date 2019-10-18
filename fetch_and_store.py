@@ -31,7 +31,12 @@ class SQLiteStore:
         self._conn.commit()
 
 def main():
-    NODE_PATH = '/Users/kit/.nodenv/shims/node'
+    '''
+    Get an JSON from stdin (to which the Node script executed
+    by this Python script outputs), and store it into sqlite3.
+    And older records than 2 hours will be deleted without any notification.
+    '''
+    NODE_PATH = '/usr/bin/env node'
     SQLITE3_PATH = './db.sqlite3'
     json_str = subprocess.check_output([NODE_PATH, 'index.js'])
     instrument = 'USD_JPY'
