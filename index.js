@@ -3,6 +3,9 @@
 const fs = require('fs');
 const fetch = require('node-fetch');
 const moment = require('moment-timezone');
+const Context = require('@oanda/v20/context').Context;
+const pp = v => console.dir(v, { depth: null, colors: true});
+
 
 /*
 Environment           <Domain>
@@ -23,6 +26,7 @@ const DOMAIN = ((env) => {
       return 'api-fxtrade.oanda.com';
   }
 }) (ENV);
+const STREAM_DOMAIN = 'stream-fxpractice.oanda.com'; //() => DOMAIN.replace('api-', 'stream-');
 const ACCESS_TOKEN = process.env.OANDA_ACCESS_TOKEN;
 const ACCOUNT_ID = process.env.OANDA_ACCOUNT_ID;
 // Up to 10 instruments, separated by URL-encoded comma (%2C)
@@ -40,6 +44,32 @@ const PROTOCOL = ((env) => {
 const PATH = `/v1/prices?accountId=${ACCOUNT_ID}&instruments=${instruments}`;
 const URL = `${PROTOCOL}://${DOMAIN}${PATH}`;
 
+const streamingContext = ((host, port, ssl, application, token) => {
+  const ctx = new Context(host, port, ssl, application);
+  ctx.setToken(token);
+  return ctx;
+})(STREAM_DOMAIN, 443, true, 'OANDA', ACCESS_TOKEN);
+
+const streamArgs = ((account_id, instruments, snapshot, heartbeat) => {
+  // snapshot: https://developer.oanda.com/rest-live-v20/best-practices/
+  const receive = (msg, type) => { 
+    if (type !== 'msg') { return; }
+    console.log(
+      { ask: msg.asks.map((a) => a.price),
+        bid: msg.bids.map((b) => b.price()) }
+    );
+  };
+  return [
+    account_id,
+    { instruments: instruments, snapshot: snapshot },
+    (message) => receive(message, 'msg'),
+    (response) => receive(response, 'resp')
+  ];
+})(ACCOUNT_ID, 'USD_JPY', false, true);
+
+streamingContext.pricing.stream(...streamArgs);
+
+/*
 const dataframe_json_resp = (instrument, time, bid, ask, mid) => {
   return JSON.stringify(
     { [instrument]: {
@@ -74,3 +104,4 @@ const dataframe_json_resp = (instrument, time, bid, ask, mid) => {
     console.error(e);
   }
 })();
+*/
