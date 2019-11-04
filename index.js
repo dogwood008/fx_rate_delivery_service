@@ -1,10 +1,25 @@
 'use strict';
 
+Array.prototype.sum = function () {
+  return numbers.reduce(function(total, num) {
+    return total + num
+  });
+}
+
+// https://stabucky.com/wp/archives/6737
+Array.prototype.mean = function() {
+  const array_length = this.length;
+  let value = 0.0;
+  for (let i = 0; i < array_length; i++) {
+    value += this[i];
+  }
+  return value / array_length;
+}
+
 const fs = require('fs');
-const fetch = require('node-fetch');
 const moment = require('moment-timezone');
 const Context = require('@oanda/v20/context').Context;
-const pp = v => console.dir(v, { depth: null, colors: true});
+const pp = v => console.dir(v, { depth: null, colors: true });
 
 
 /*
@@ -50,58 +65,32 @@ const streamingContext = ((host, port, ssl, application, token) => {
   return ctx;
 })(STREAM_DOMAIN, 443, true, 'OANDA', ACCESS_TOKEN);
 
+// stream(accountID, queryParams, streamChunkHandler, responseHandler)
 const streamArgs = ((account_id, instruments, snapshot, heartbeat) => {
   // snapshot: https://developer.oanda.com/rest-live-v20/best-practices/
-  const receive = (msg, type) => { 
-    if (type !== 'msg') { return; }
-    console.log(
-      { ask: msg.asks.map((a) => a.price),
-        bid: msg.bids.map((b) => b.price()) }
-    );
+  const streamChunkHandler = (msg) => {
+    if (msg.type === 'HEARTBEAT' && heartbeat) { console.debug(msg.toString()); return; }
+    const pair = {
+      asks: msg.asks.map(p => parseFloat(p.price)),
+      bids: msg.bids.map(p => parseFloat(p.price)) };
+    pair.ask = pair.asks.mean();
+    pair.bid = pair.bids.mean();
+    console.debug(pair);
+  };
+  const responseHandler = (resp) => {
+    debugger;
+    if (parseInt(msg.statusCode) >= 500) {
+      throw `Server Error: ${msg}`;
+    }
+    console.debug(resp);
   };
   return [
     account_id,
     { instruments: instruments, snapshot: snapshot },
-    (message) => receive(message, 'msg'),
-    (response) => receive(response, 'resp')
+    (message) => streamChunkHandler(message),
+    (response) => responseHandler(response)
   ];
 })(ACCOUNT_ID, 'USD_JPY', false, true);
 
 streamingContext.pricing.stream(...streamArgs);
 
-/*
-const dataframe_json_resp = (instrument, time, bid, ask, mid) => {
-  return JSON.stringify(
-    { [instrument]: {
-      [time]: {
-        'bid': bid,
-        'ask': ask,
-        'mid': mid
-      }
-    }
-    }
-  );
-};
-
-(async () => {
-  try {
-    const oanda_resp = await fetch(URL, {
-      headers: {
-        'Authorization': `Bearer ${ACCESS_TOKEN}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    });
-    const usdjpy = (await oanda_resp.json())['prices'][0];
-    debugger;
-    const bid = 0.0 + usdjpy['bid'];
-    const ask = 0.0 + usdjpy['ask'];
-    const mid = (bid + ask) / 2.0;
-    const time = moment(usdjpy['time']).tz("Asia/Tokyo").format();
-    const instrument = 'USD_JPY';
-
-    console.log(dataframe_json_resp(instrument, time, bid, ask, mid));
-  } catch (e) {
-    console.error(e);
-  }
-})();
-*/
