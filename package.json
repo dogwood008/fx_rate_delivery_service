@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "@oanda/v20": "git@github.com:dogwood008/v20-javascript.git",
     "moment": "^2.24.0",
     "moment-timezone": "^0.5.26",
-    "node-fetch": "^2.6.0"
+    "sqlite3": "^4.1.0"
   },
   "devDependencies": {},
   "scripts": {
