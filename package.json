@@ -5,7 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "@oanda/v20": "git@github.com:dogwood008/v20-javascript.git",
-    "moment": "^2.24.0",
+    "moment": "^2.29.4",
     "moment-timezone": "^0.5.26",
     "sqlite3": "^4.1.0"
   },
